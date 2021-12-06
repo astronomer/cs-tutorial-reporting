@@ -1,0 +1,2 @@
+example_dag	False	False	True	/usr/local/airflow/dags/example-dag.py	Ii91c3IvbG9jYWwvYWlyZmxvdy9kYWdzL2V4YW1wbGUtZGFnLnB5Ig.P36QwQVJkZoFmEX6Tp_SvW_aKGY	['airflow']			{'__type': 'TimeDelta', 'days': 0, 'microseconds': 0, 'seconds': 1800}
+reporting_dag	False	False	True	/usr/local/airflow/dags/reporting-dag.py	Ii91c3IvbG9jYWwvYWlyZmxvdy9kYWdzL3JlcG9ydGluZy1kYWcucHki.KBHToom3w-sAm42m5d9xtIjXYws	['airflow']			
