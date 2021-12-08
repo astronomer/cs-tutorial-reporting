@@ -1,7 +1,7 @@
 import requests
 import csv
 import json
-
+import psycopg2
 headers = {"Content-Type": "application/json",
            "Accept": "*/*",
            }
@@ -9,9 +9,19 @@ AIRFLOW_USERNAME = 'admin'
 AIRFLOW_PASSWORD = 'admin'
 AIRFLOW_WEBSERVER_HOST = 'localhost'
 AIRFLOW_WEBSERVER_PORT = '8080'
-
-
-
+conn=psycopg2.connect(
+    dbname ='postgres',
+    user ='postgres',
+    password ='postgres',
+    host ='localhost',
+    port=5432,
+)
+cur = conn.cursor()
+cur.execute("SELECT dag_id FROM rpt.dag")
+dags=cur.fetchall()
+dags=json.dumps(dags)
+decoder=json.JSONDecoder()
+existing_dags=decoder.decode(dags)
 # var_return = requests.get(f"http://{AIRFLOW_WEBSERVER_HOST}:{AIRFLOW_WEBSERVER_PORT}/api/v1/dags",
 #                           headers=headers,
 #                           auth=(AIRFLOW_USERNAME, AIRFLOW_PASSWORD))
