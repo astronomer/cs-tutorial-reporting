@@ -1,7 +1,7 @@
 -- CREATE SCHEMA IF NOT EXISTS rpt;
--- DROP TABLE IF EXISTS rpt.dag CASCADE;
+DROP TABLE IF EXISTS rpt.dag CASCADE;
 DROP TABLE IF EXISTS rpt.dag_run CASCADE;
--- DROP TABLE IF EXISTS rpt.task_instance CASCADE;
+DROP TABLE IF EXISTS rpt.task_instance CASCADE;
 
 CREATE TABLE IF NOT EXISTS rpt.dag
 (
@@ -20,25 +20,24 @@ CREATE TABLE IF NOT EXISTS rpt.dag
 
 CREATE TABLE IF NOT EXISTS rpt.dag_run
 (
-    dag_run_id character varying(250) COLLATE pg_catalog."default" NOT NULL,
     dag_id character varying(250) COLLATE pg_catalog."default" NOT NULL,
-    logical_date timestamp with time zone NOT NULL,
-    execution_date timestamp with time zone NOT NULL,
+    dag_run_id character varying(250) COLLATE pg_catalog."default" NOT NULL,
     end_date timestamp with time zone,
+    execution_date timestamp with time zone NOT NULL,
+    external_trigger boolean,
+    logical_date timestamp with time zone NOT NULL,
     start_date timestamp with time zone,
     state character varying(50) COLLATE pg_catalog."default",
-    external_trigger boolean,
 
-    CONSTRAINT dag_run_pkey PRIMARY KEY (id),
+    CONSTRAINT dag_run_pkey PRIMARY KEY (dag_run_id),
     CONSTRAINT dag_run_dag_id_execution_date_key UNIQUE (dag_id, execution_date),
-    CONSTRAINT dag_run_dag_id_run_id_key UNIQUE (dag_id, run_id)
+    CONSTRAINT dag_run_dag_id_run_id_key UNIQUE (dag_id, dag_run_id)
 );
 
 CREATE TABLE IF NOT EXISTS rpt.task_instance
 (
-    task_id character varying(250) COLLATE pg_catalog."default" NOT NULL,
     dag_id character varying(250) COLLATE pg_catalog."default" NOT NULL,
-    run_id character varying(250) COLLATE pg_catalog."default" NOT NULL,
+    task_id character varying(250) COLLATE pg_catalog."default" NOT NULL,
     execution_date timestamp with time zone,
     start_date timestamp with time zone,
     end_date timestamp with time zone,
@@ -53,14 +52,14 @@ CREATE TABLE IF NOT EXISTS rpt.task_instance
     queue character varying(256) COLLATE pg_catalog."default",
     priority_weight integer,
     operator character varying(1000) COLLATE pg_catalog."default",
-    queued_dttm timestamp with time zone,
+    queued_when timestamp with time zone,
     pid integer,
-    executor_config bytea,
-    CONSTRAINT task_instance_pkey PRIMARY KEY (dag_id, task_id, run_id),
-    CONSTRAINT task_instance_dag_run_fkey FOREIGN KEY (run_id, dag_id)
-        REFERENCES rpt.dag_run (run_id, dag_id) MATCH SIMPLE
-        ON UPDATE NO ACTION
-        ON DELETE CASCADE
+    executor_config bytea
+--     CONSTRAINT task_instance_pkey PRIMARY KEY (dag_id, task_id, execution_date),
+--     CONSTRAINT task_instance_dag_run_fkey FOREIGN KEY (execution_date, dag_id)
+--         REFERENCES rpt.dag_run (execution_date, dag_id) MATCH SIMPLE
+--         ON UPDATE NO ACTION
+--         ON DELETE CASCADE
 )
 
 

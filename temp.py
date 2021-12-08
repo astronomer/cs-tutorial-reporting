@@ -1,5 +1,6 @@
 import requests
 import csv
+import json
 
 headers = {"Content-Type": "application/json",
            "Accept": "*/*",
@@ -11,9 +12,27 @@ AIRFLOW_WEBSERVER_PORT = '8080'
 
 
 
-var_return = requests.get(f"http://{AIRFLOW_WEBSERVER_HOST}:{AIRFLOW_WEBSERVER_PORT}/api/v1/dags",
-                          headers=headers,
-                          auth=(AIRFLOW_USERNAME, AIRFLOW_PASSWORD))
+# var_return = requests.get(f"http://{AIRFLOW_WEBSERVER_HOST}:{AIRFLOW_WEBSERVER_PORT}/api/v1/dags",
+#                           headers=headers,
+#                           auth=(AIRFLOW_USERNAME, AIRFLOW_PASSWORD))
+body={
+  # "order_by": "dag_run_id",
+  # "page_offset": 0,
+  # "page_limit": 100,
+  # "dag_ids": [
+  #   "example_dag"
+  # ],
+  # "execution_date_gte": "2018-08-24T14:15:22Z",
+  # "execution_date_lte": "2019-08-24T14:15:22Z",
+  # "start_date_gte": "2018-08-24T14:15:22Z",
+  # "start_date_lte": "2019-08-24T14:15:22Z",
+  # "end_date_gte": "2018-08-24T14:15:22Z"
+  # "end_date_lte": "2019-08-24T14:15:22Z"
+}
+
+var_return=requests.post(  f"http://{AIRFLOW_WEBSERVER_HOST}:{AIRFLOW_WEBSERVER_PORT}/api/v1/dags/~/dagRuns/~/taskInstances/list",
+                            headers=headers,data=json.dumps(body),
+            auth=(AIRFLOW_USERNAME, AIRFLOW_PASSWORD))
 print(var_return.json())
 with open('dags.tsv','w',)  as tsvfile:
     fields = ['dag_id',

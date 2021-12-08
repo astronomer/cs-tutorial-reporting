@@ -7,6 +7,7 @@ from airflow.version import version
 from datetime import datetime, timedelta
 import requests
 import csv
+import json
 
 headers = {"Content-Type": "application/json",
            "Accept": "*/*",
@@ -58,17 +59,17 @@ def get_dag_info(**kwargs):
 def get_dag_run_info(**kwargs):
 
     with open('dag_runs.tsv', 'w', ) as tsvfile:
-        var_return=requests.get(  f"http://{AIRFLOW_WEBSERVER_HOST}:{AIRFLOW_WEBSERVER_PORT}/api/v1/dags/~/dagRuns/list",
-                            headers=headers,
+        var_return=requests.post(  f"http://{AIRFLOW_WEBSERVER_HOST}:{AIRFLOW_WEBSERVER_PORT}/api/v1/dags/~/dagRuns/list",
+                            headers=headers, data='{}',
             auth=(AIRFLOW_USERNAME, AIRFLOW_PASSWORD))
-        fields = ["dag_run_id",
-    "dag_id",
-    "logical_date",
-    "execution_date",
-    "start_date",
-    "end_date",
-    "state",
-    "external_trigger"]
+        fields = ["dag_id",
+                "dag_run_id",
+                "end_date",
+                "execution_date",
+                "external_trigger",
+                "logical_date",
+                "start_date",
+                "state"]
         writer = csv.DictWriter(tsvfile, fieldnames=fields, delimiter='\t')
         # writer.writeheader()
         for dag_run in var_return.json()['dag_runs']:
@@ -77,14 +78,14 @@ def get_dag_run_info(**kwargs):
             #     headers=headers,
             #     auth=(AIRFLOW_USERNAME, AIRFLOW_PASSWORD)).json()
             row={
-                "dag_run_id": dag_run['dag_id'],
                 "dag_id": dag_run['dag_id'],
-                "logical_date": dag_run['dag_id'],
-                "execution_date": dag_run['dag_id'],
-                "start_date": dag_run['dag_id'],
-                "end_date": dag_run['dag_id'],
-                "state": dag_run['dag_id'],
-                "external_trigger": dag_run['dag_id']
+                "dag_run_id": dag_run['dag_run_id'],
+                "end_date": dag_run['end_date'],
+                "execution_date": dag_run['execution_date'],
+                "external_trigger": dag_run['external_trigger'],
+                "logical_date": dag_run['logical_date'],
+                "start_date": dag_run['start_date'],
+                "state": dag_run['state'],
               }
             writer.writerow(row)
             print(row)
@@ -92,13 +93,65 @@ def get_dag_run_info(**kwargs):
     pg_hook.bulk_load(table='rpt.dag_run',tmp_file='dag_runs.tsv')
 
 def get_task_instance_info(**kwargs):
+    with open('task_instance.tsv', 'w', ) as tsvfile:
+        body={}
+        var_return = requests.post(
+            f"http://{AIRFLOW_WEBSERVER_HOST}:{AIRFLOW_WEBSERVER_PORT}/api/v1/dags/~/dagRuns/~/taskInstances/list",
+            headers=headers, data=json.dumps(body),
+            auth=(AIRFLOW_USERNAME, AIRFLOW_PASSWORD))
+        fields = [   'dag_id',
+    'task_id',
+    'execution_date',
+    'start_date',
+    'end_date',
+    'duration',
+    'state',
+    'try_number',
+    'max_tries',
+    'hostname',
+    'unixname',
+    'pool',
+    'pool_slots',
+    'queue',
+    'priority_weight',
+    'operator',
+    'queued_when',
+    'pid',
+    'executor_config' ]
+        writer = csv.DictWriter(tsvfile, fieldnames=fields)
+        writer.writeheader()
+        for task_instance in var_return.json()['task_instances']:
+            # dag_run_dict = requests.get(
+            #     f"http://{AIRFLOW_WEBSERVER_HOST}:{AIRFLOW_WEBSERVER_PORT}/api/v1/dags/{dag['dag_id']}",
+            #     headers=headers,
+            #     auth=(AIRFLOW_USERNAME, AIRFLOW_PASSWORD)).json()
+            row = { 'dag_id': task_instance['dag_id'],
+                'task_id': task_instance['task_id'],
+                'execution_date': task_instance['execution_date'],
+                'start_date': task_instance['start_date'],
+                'end_date': task_instance['end_date'],
+                'duration': task_instance['duration'],
+                'state': task_instance['state'],
+                'try_number': task_instance['try_number'],
+                'max_tries': task_instance['max_tries'],
+                'hostname': task_instance['hostname'],
+                'unixname': task_instance['unixname'],
+                'pool': task_instance['pool'],
+                'pool_slots': task_instance['pool_slots'],
+                'queue': task_instance['queue'],
+                'priority_weight': task_instance['priority_weight'],
+                'operator': task_instance['operator'],
+                'queued_when': task_instance['queued_when'],
+                'pid': task_instance['pid'],
+                'executor_config': task_instance['executor_config']
+            }
+            writer.writerow(row)
+            # print(row)
 
-    var_return = requests.get(f"http://{AIRFLOW_WEBSERVER_HOST}:{AIRFLOW_WEBSERVER_PORT}/api/v1/dags",
-                              headers=headers,
-                              auth=(AIRFLOW_USERNAME, AIRFLOW_PASSWORD))
-    print(var_return.json())
-    print('Here is the full DAG Run context. It is available because provide_context=True')
-    print(kwargs)
+        query = "COPY rpt.task_instance FROM STDIN WITH CSV HEADER NULL AS '' "
+        pg_hook = PostgresHook(postgres_conn_id='my_postgres_conn_id')
+        pg_hook.copy_expert(query,'/usr/local/airflow/task_instance.tsv')
+# pg_hook.bulk_load(table='rpt.task_instance', tmp_file='task_instance.tsv')
 
 # Default settings applied to all tasks
 default_args = {
