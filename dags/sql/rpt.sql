@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS rpt.dag_run
     start_date timestamp with time zone,
     state character varying(50) COLLATE pg_catalog."default",
 
-    CONSTRAINT dag_run_pkey PRIMARY KEY (dag_run_id),
+    CONSTRAINT dag_run_pkey PRIMARY KEY (dag_run_id,dag_id),
     CONSTRAINT dag_run_dag_id_execution_date_key UNIQUE (dag_id, execution_date),
     CONSTRAINT dag_run_dag_id_run_id_key UNIQUE (dag_id, dag_run_id)
 );
