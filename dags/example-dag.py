@@ -32,13 +32,13 @@ with DAG('example_dag',
          max_active_runs=3,
          schedule_interval=timedelta(minutes=30),  # https://airflow.apache.org/docs/stable/scheduler.html#dag-runs
          default_args=default_args,
-         # catchup=False # enable if you don't want historical dag runs to run
+         catchup=False # enable if you don't want historical dag runs to run
          ) as dag:
 
     t0 = DummyOperator(
         task_id='start'
     )
-
+    #can I edit??
     t1 = DummyOperator(
         task_id='group_bash_tasks'
     )
@@ -54,6 +54,7 @@ with DAG('example_dag',
         if version.startswith('2'):
             tn = PythonOperator(
                 task_id=f'python_print_date_{task}',
+
                 python_callable=my_custom_function,  # make sure you don't include the () of the function
                 op_kwargs={'task_number': task},
             )

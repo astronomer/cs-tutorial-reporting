@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "astronomer-success",
+  "private_key_id": "3c8c83f1711a25a56e94d31b998c0ec6da5766ec",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDAcM/WQtzmFPmR\n71jgKDnTBJvfb5KY0GOShXtvk1zm2DQ4WQ3+zKkhGUBfcLpt6+PEBEozh7dp9uFm\nVnaDzORYGFNOAbtXkiZi5+R4nv9UrP37QsCnlDIAuO2bQWAHrVLgfbQVpvpqFpHD\nlxc8TR5FpvVXmRlhjfdh5P8AHmjHW6X8SGp0bHtcpRdfT0lMOF6wW/wl5/6DBn7n\nGFNLrwcHA/A59fkOuIAm+ePgxe08ZzEIkB20vPJqtSvOYK+7mhgwbUZCS3dNDK8n\nV4g0SS49zZ2C6sv8RUxTOIAvRSeQXhO95XeR4/4s2uGKfX7rjCH+6FZRsY/6N02E\n57shCI3BAgMBAAECggEAAcSrmTk4LsZJsIZHrZgbB2oI/V+o4/3ys0aGFsVurqmV\nCcFCOlmSsoTZEUNvuBm5OBxuutxb8mWgBrTjzgRagwd2sP5dtIFZmFIviI7z80kL\nZKUVcHjBcJ2iY8lBDtMAMmM/Tc1g6suCK38aed2uyfattZBI4htIBxKPyAZPgcjt\nCE2fgyuXtQzQjzi2omPCVUl/qjOXyVIqVGsLRZcRp3JxecAFyzGMKOuHGpxHXX6I\nrjoUJK5ASnZ1JhIMR8gUJ0JSdsuii8HWwDB85r1SX57P2n9mDdpmczH58ov2f3Gt\nsgW7PSiMLcL+2cDkcQsHQVl3lTEA6FksZY/Wp/1bkQKBgQDgcFjZwze6bgTlnJ6h\nKFQI29fWCZXTSEWQURBYjffMFeMnas0Kd9QQ71MS90nYG2OeYtWdF639VtXcqEdd\natYrSNc611TpPSTyDF2lGMje/7dKUODOvd/wndJ2NEClCHTMM6jbYqwMVJWrmIhS\nRihey6N3S97ySnu8Ag8MZ9SK8QKBgQDbgI0LBxaRvJXkUhqm38kjrFxrvqHvv/El\nLZX3p7Q0KOjqGUOJSwzGziSWWLqqLPyXIhI86OFgK1WGIugZE7AomKGPjXY15XFJ\ng8WxKnHjIMgWibEeKbes6yChk/cFImtb6dAYIFLt3FdWM4jz0GtC3fBGcdhrUegn\nlWX+iE8P0QKBgHVVhr3ht0K5vcmkhbHO+Y/gDwiQ3kkk4Wk/WAJTxhZl4ul6hlNQ\nrgdkdtPVgD+AoiXtmauU85scSJYhS53k+q6KWCsk4/lDxAreuB5VxL4AhfxOKBkt\nXuPWPm8ZhipBL36KC18WSMfxeIXLKomIsBZO89isS5PzqJhzoxZjOdShAoGBAJXd\nIe8ais07zbcSW4H9nm2Nu5gQkq2HBhSVGCP7SyyllchnMVYmeHWvvwkrUV7o0hg5\nuev+MAoh7AVmBcNBTu+Yrg29zqyjl4JSxoHccd9ZvWKt5dCrOO2Fp0TKKkhGJLif\nXWVrhFNEMhj3nJSigukncGoYRmOXi4KjHPz4gcpRAoGBANtJ2lmf/+70Fxmw8zpr\nxbJtVBYL6cbcCzUUsI4qv134oukvzARU6g1Xn5XaTqfBy0K2slGhunwiANB0DIj2\n9SSSVbGFMnvNmlr3dLx8VadH+M+EX47JGDxI4WwE6MPuABsmEIm9WgpZiCHLxJ+k\nOklcyyrEEDOGfBXisC4Davp4\n-----END PRIVATE KEY-----\n",
+  "client_email": "gcs-reportin@astronomer-success.iam.gserviceaccount.com",
+  "client_id": "112095117995503376272",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/gcs-reportin%40astronomer-success.iam.gserviceaccount.com"
+}
