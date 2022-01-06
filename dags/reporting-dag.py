@@ -15,7 +15,6 @@ AIRFLOW_USERNAME = 'admin'
 AIRFLOW_PASSWORD = 'admin'
 AIRFLOW_WEBSERVER_HOST = 'webserver'
 AIRFLOW_WEBSERVER_PORT = '8080'
-BATCH_SIZE = 1000
 GCP_CONN_ID= 'google_cloud_storage'
 BUCKET='customer-success-reporting'
 PG_CONN_ID='my_postgres_conn_id'
