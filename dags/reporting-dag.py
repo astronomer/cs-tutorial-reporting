@@ -1,16 +1,10 @@
 from airflow import DAG
-from airflow.operators.dummy_operator import DummyOperator
-from airflow.operators.bash_operator import BashOperator
 from airflow.operators.python_operator import PythonOperator
 from airflow.providers.postgres.operators.postgres import PostgresOperator, PostgresHook
-from airflow.version import version
-from datetime import datetime, timedelta
-import requests
-import csv
-import json
-import os
 from airflow.utils.task_group import TaskGroup
 from airflow.providers.google.cloud.operators.gcs import GCSListObjectsOperator
+from datetime import datetime, timedelta
+import json
 from operators.airflow_to_gcs import AirflowToGCSOperator
 from operators.gcs_to_postgres import GCSToPostgres
 
@@ -49,7 +43,6 @@ def set_max_task_instance(ti, **kwargs):
     ti.xcom_push(key='MAX_TASK_START', value=str(max_task_start[0]))
 
 
-# Default settings applied to all tasks
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
@@ -59,11 +52,10 @@ default_args = {
     'retry_delay': timedelta(minutes=5)
 }
 
-# Using a DAG context manager, you don't have to specify the dag property of each task
 with DAG('reporting_dag',
          start_date=datetime(2019, 1, 1),
          max_active_runs=3,
-         schedule_interval=None,  # https://airflow.apache.org/docs/stable/scheduler.html#dag-runs
+         schedule_interval=None,
          default_args=default_args,
          # catchup=False # enable if you don't want historical dag runs to run
          ) as dag:
@@ -76,7 +68,6 @@ with DAG('reporting_dag',
         t1 = PythonOperator(
             task_id="get_existing_dags",
             python_callable=get_existing_dag_info
-            # parameters={"begin_date": "2020-01-01", "end_date": "2020-12-31"},
         )
         t2 = AirflowToGCSOperator(
             task_id='dags_to_gcs',
@@ -113,7 +104,7 @@ with DAG('reporting_dag',
         t5 = AirflowToGCSOperator(
             task_id='dag_runs_to_gcs',
             bucket='customer-success-reporting',
-            batch_size=50,
+            batch_size=10000,
             airflow_object='dagRuns',
             gcp_conn_id='google_cloud_storage',
             last_upload_date="{{ti.xcom_pull(task_ids='dag_runs.set_max_dag_run_start', key='MAX_DAG_START')}}",
@@ -191,7 +182,7 @@ with DAG('reporting_dag',
                            'pid',
                            'executor_config']
         )
-        t8>>t9>>t10>>t11
+        t8 >> t9 >> t10 >> t11
 
     t0 >> tg1
     t0 >> tg2
