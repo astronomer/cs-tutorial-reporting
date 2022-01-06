@@ -16,7 +16,11 @@ AIRFLOW_PASSWORD = 'admin'
 AIRFLOW_WEBSERVER_HOST = 'webserver'
 AIRFLOW_WEBSERVER_PORT = '8080'
 BATCH_SIZE = 1000
-pg_hook = PostgresHook(postgres_conn_id='my_postgres_conn_id')
+GCP_CONN_ID= 'google_cloud_storage'
+BUCKET='customer-success-reporting'
+PG_CONN_ID='my_postgres_conn_id'
+pg_hook = PostgresHook(postgres_conn_id=PG_CONN_ID)
+
 
 
 def get_existing_dag_info(ti, **kwargs):
@@ -62,7 +66,7 @@ with DAG('reporting_dag',
     t0 = PostgresOperator(
         task_id='ddl',
         sql='sql/rpt.sql',
-        postgres_conn_id='my_postgres_conn_id'
+        postgres_conn_id=PG_CONN_ID
     )
     with TaskGroup(group_id='dags') as tg1:
         t1 = PythonOperator(
@@ -71,19 +75,19 @@ with DAG('reporting_dag',
         )
         t2 = AirflowToGCSOperator(
             task_id='dags_to_gcs',
-            bucket='customer-success-reporting',
+            bucket=BUCKET,
             airflow_object='dags',
-            gcp_conn_id='google_cloud_storage',
+            gcp_conn_id=GCP_CONN_ID,
             dst='airflow/dags/{{ ts_nodash }}/'
         )
         t3 = GCSToPostgres(
             task_id='dag_gcs_to_postgres',
-            bucket='customer-success-reporting',
+            bucket=BUCKET,
             destination_table='rpt.dag',
             source_format='JSON',
             source_objects='airflow/dags/{{ ts_nodash }}/dags.json',
-            google_cloud_storage_conn_id='google_cloud_storage',
-            pg_conn_id='my_postgres_conn_id',
+            google_cloud_storage_conn_id=GCP_CONN_ID,
+            pg_conn_id=PG_CONN_ID,
             pk_col='dag_id',
             schema_fields=['dag_id',
                            'is_paused',
@@ -103,27 +107,27 @@ with DAG('reporting_dag',
 
         t5 = AirflowToGCSOperator(
             task_id='dag_runs_to_gcs',
-            bucket='customer-success-reporting',
+            bucket=BUCKET,
             batch_size=10000,
             airflow_object='dagRuns',
-            gcp_conn_id='google_cloud_storage',
+            gcp_conn_id=GCP_CONN_ID,
             last_upload_date="{{ti.xcom_pull(task_ids='dag_runs.set_max_dag_run_start', key='MAX_DAG_START')}}",
             dst='airflow/dag_runs/{{ ts_nodash }}/'
         )
         t6 = GCSListObjectsOperator(
             task_id='list_dag_run_objects',
-            bucket='customer-success-reporting',
-            gcp_conn_id='google_cloud_storage',
+            bucket=BUCKET,
+            gcp_conn_id=GCP_CONN_ID,
             prefix='airflow/dag_runs/{{ ts_nodash }}/'
         )
         t7 = GCSToPostgres(
             task_id='dag_run_gcs_to_postgres',
-            bucket='customer-success-reporting',
+            bucket=BUCKET,
             destination_table='rpt.dag_run',
             source_format='JSON',
             source_objects=t6.output,
-            google_cloud_storage_conn_id='google_cloud_storage',
-            pg_conn_id='my_postgres_conn_id',
+            google_cloud_storage_conn_id=GCP_CONN_ID,
+            pg_conn_id=PG_CONN_ID,
             schema_fields=["dag_id",
                            "dag_run_id",
                            "end_date",
@@ -142,26 +146,26 @@ with DAG('reporting_dag',
         )
         t9 = AirflowToGCSOperator(
             task_id='task_instance_to_gcs',
-            bucket='customer-success-reporting',
+            bucket=BUCKET,
             airflow_object='taskInstances',
-            gcp_conn_id='google_cloud_storage',
+            gcp_conn_id=GCP_CONN_ID,
             last_upload_date="{{ti.xcom_pull(task_ids='task_instances.set_max_task_instance', key='MAX_TASK_START')}}",
             dst='airflow/task_instance/{{ ts_nodash }}/'
         )
         t10 = GCSListObjectsOperator(
             task_id='list_task_instance_objects',
-            bucket='customer-success-reporting',
-            gcp_conn_id='google_cloud_storage',
+            bucket=BUCKET,
+            gcp_conn_id=GCP_CONN_ID,
             prefix='airflow/task_instance/{{ ts_nodash }}/'
         )
         t11 = GCSToPostgres(
             task_id='task_instance_gcs_to_postgres',
-            bucket='customer-success-reporting',
+            bucket=BUCKET,
             destination_table='rpt.task_instance',
             source_format='JSON',
             source_objects=t10.output,
-            google_cloud_storage_conn_id='google_cloud_storage',
-            pg_conn_id='my_postgres_conn_id',
+            google_cloud_storage_conn_id=GCP_CONN_ID,
+            pg_conn_id=PG_CONN_ID,
             schema_fields=['dag_id',
                            'task_id',
                            'execution_date',
