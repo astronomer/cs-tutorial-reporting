@@ -180,6 +180,7 @@ class AirflowToGCSOperator(BaseOperator):
                 data = {'page_limit': self.batch_size,
                         'page_offset': 0,
                         'start_date_gte': final_dt.isoformat()}
+                self.log.info(data)
             var_return = requests.post(
                 f"http://{self.airflow_host}:{self.airflow_port}/api/v1/dags/~/dagRuns/~/taskInstances/list",
                 headers=headers, data=json.dumps(data),
