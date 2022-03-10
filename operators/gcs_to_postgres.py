@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 
 class GCSToPostgres(BaseOperator):
-
+    """Add operator docstring"""
     template_fields: Sequence[str] = (
         'bucket',
         'source_objects',
@@ -72,7 +72,7 @@ class GCSToPostgres(BaseOperator):
         self.destination_table = destination_table
         self.schema_fields = schema_fields
         self.source_format = source_format
-        self.pk_col=pk_col
+        self.pk_col = pk_col
         self.field_delimiter = field_delimiter
         self.max_bad_records = max_bad_records
         self.quote_character = quote_character
@@ -84,10 +84,7 @@ class GCSToPostgres(BaseOperator):
         self.google_cloud_storage_conn_id = google_cloud_storage_conn_id
         self.delegate_to = delegate_to
 
-
         self.impersonation_chain = impersonation_chain
-
-
 
     def execute(self, context: 'Context'):
         pg_hook = PostgresHook(
@@ -100,14 +97,16 @@ class GCSToPostgres(BaseOperator):
         )
 
         self.source_objects = (
-            self.source_objects if isinstance(self.source_objects, list) else [self.source_objects]
+            self.source_objects if isinstance(self.source_objects, list) else [
+                                              self.source_objects]
         )
         conn = pg_hook.get_conn()
         cursor = conn.cursor()
         existing_pks = []
         if self.pk_col is not None:
-            cursor.execute(f'SELECT {self.pk_col} FROM {self.destination_table};')
-            pks=cursor.fetchall()
+            cursor.execute(
+                f'SELECT {self.pk_col} FROM {self.destination_table};')
+            pks = cursor.fetchall()
             self.log.info('these will not get loaded')
             self.log.info(pks)
             for pk in pks:
@@ -117,20 +116,21 @@ class GCSToPostgres(BaseOperator):
 
         for source_object in self.source_objects:
             self.log.info('1')
-            source_file=gcs_hook.download(self.bucket,source_object)
+            source_file = gcs_hook.download(self.bucket, source_object)
             self.log.info('2')
             self.log.info(source_file)
-            source_file=json.loads(source_file.decode(self.encoding))
+            source_file = json.loads(source_file.decode(self.encoding))
             self.log.info(source_file)
             self.log.info('3')
             self.log.info(source_file)
             self.log.info('4')
             self.log.info(f'/tmp/{source_object}')
-            x=Path(f'/tmp/{source_object}').mkdir(parents=True, exist_ok=True)
+            x = Path(
+                f'/tmp/{source_object}').mkdir(parents=True, exist_ok=True)
             os.rmdir(f'/tmp/{source_object}')
             self.log.info(x)
 
-            with open(f'/tmp/{source_object}','w+') as dest_file:
+            with open(f'/tmp/{source_object}', 'w+') as dest_file:
                 self.log.info('8')
                 fields = self.schema_fields
                 writer = csv.DictWriter(dest_file, fieldnames=fields)
@@ -139,9 +139,9 @@ class GCSToPostgres(BaseOperator):
                 self.log.info(source_file)
                 for object in source_file:
 
-                    row={}
+                    row = {}
                     for field in self.schema_fields:
-                        row[field]=object[field]
+                        row[field] = object[field]
                     if self.pk_col is not None:
                         if row[self.pk_col] not in existing_pks:
                             writer.writerow(row)

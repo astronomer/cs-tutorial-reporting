@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 
 
 class AirflowToGCSOperator(BaseOperator):
-
+    """Add docstring to Operator"""
     template_fields: Sequence[str] = (
         # 'src',
         'dst',
@@ -85,7 +85,7 @@ class AirflowToGCSOperator(BaseOperator):
         self.mime_type = mime_type
         self.delegate_to = delegate_to
         self.gzip = gzip
-        self.batch_size=batch_size
+        self.batch_size = batch_size
         self.impersonation_chain = impersonation_chain
 
     def execute(self, context: 'Context'):
@@ -100,7 +100,7 @@ class AirflowToGCSOperator(BaseOperator):
                    }
         self.log.info(f'upload date: {self.last_upload_date}')
         info = []
-        if self.airflow_object=='dags':
+        if self.airflow_object == 'dags':
             var_return = requests.get(f"http://{self.airflow_host}:{self.airflow_port}/api/v1/dags",
                                       headers=headers,
                                       auth=(self.airflow_user, self.airflow_pass))
@@ -129,7 +129,7 @@ class AirflowToGCSOperator(BaseOperator):
                 gzip=self.gzip,
             )
 
-        elif self.airflow_object=='taskInstances':
+        elif self.airflow_object == 'taskInstances':
             #page_limit and offset don't work for task instance so you have to load it all at one
             #https://github.com/apache/airflow/issues/20725
             #alternitivly you could use the get rest call, but that loads 100 task instances at a time and would
@@ -181,7 +181,7 @@ class AirflowToGCSOperator(BaseOperator):
                 gzip=self.gzip,
             )
 
-        elif self.airflow_object=='dagRuns':
+        elif self.airflow_object == 'dagRuns':
             if self.last_upload_date == 'None':
                 data = {'page_limit': self.batch_size,
                         'page_offset': 0}
@@ -224,11 +224,11 @@ class AirflowToGCSOperator(BaseOperator):
                 gzip=self.gzip,
             )
             total_entries = var_return.json()['total_entries']
-            offset=self.batch_size
-            cnt=1
+            offset = self.batch_size
+            cnt = 1
             while offset < total_entries:
-                cnt+=1
-                info=[]
+                cnt += 1
+                info = []
                 data = {'page_limit': self.batch_size,
                         'page_offset': offset}
 

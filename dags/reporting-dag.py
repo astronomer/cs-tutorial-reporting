@@ -15,11 +15,10 @@ AIRFLOW_USERNAME = 'admin'
 AIRFLOW_PASSWORD = 'admin'
 AIRFLOW_WEBSERVER_HOST = 'webserver'
 AIRFLOW_WEBSERVER_PORT = '8080'
-GCP_CONN_ID= 'google_cloud_storage'
-BUCKET='customer-success-reporting'
-PG_CONN_ID='my_postgres_conn_id'
+GCP_CONN_ID = 'google_cloud_storage'
+BUCKET = 'customer-success-reporting'
+PG_CONN_ID = 'my_postgres_conn_id'
 pg_hook = PostgresHook(postgres_conn_id=PG_CONN_ID)
-
 
 
 def get_existing_dag_info(ti, **kwargs):
@@ -46,21 +45,11 @@ def set_max_task_instance(ti, **kwargs):
     ti.xcom_push(key='MAX_TASK_START', value=str(max_task_start[0]))
 
 
-default_args = {
-    'owner': 'airflow',
-    'depends_on_past': False,
-    'email_on_failure': False,
-    'email_on_retry': False,
-    'retries': 1,
-    'retry_delay': timedelta(minutes=5)
-}
-
 with DAG('reporting_dag',
          start_date=datetime(2019, 1, 1),
          max_active_runs=3,
          schedule_interval=None,
-         default_args=default_args,
-         # catchup=False # enable if you don't want historical dag runs to run
+         catchup=False
          ) as dag:
     t0 = PostgresOperator(
         task_id='ddl',
@@ -99,7 +88,7 @@ with DAG('reporting_dag',
                            'root_dag_id',
                            'schedule_interval']
         )
-        t1 >> t2 >>t3
+        t1 >> t2 >> t3
     with TaskGroup(group_id='dag_runs') as tg2:
         t4 = PythonOperator(task_id='set_max_dag_run_start',
                             python_callable=set_max_dag_run_start)
@@ -136,7 +125,7 @@ with DAG('reporting_dag',
                            "start_date",
                            "state", ]
         )
-        t4>>t5>>t6>>t7
+        t4 >> t5 >> t6 >> t7
     with TaskGroup(group_id='task_instances') as tg3:
 
         t8 = PythonOperator(
