@@ -31,7 +31,49 @@ if TYPE_CHECKING:
 
 
 class GCSToPostgres(BaseOperator):
-    """Add operator docstring"""
+    """Add operator docstring
+
+    :param bucket: The bucket to load from. (templated)
+    :param source_objects: String or List of Google Cloud Storage URIs to load from. (templated)
+        If source_format is 'DATASTORE_BACKUP', the list must only contain a single URI.
+    :param destination_table: the name of the postgres table you wish to load to
+    :param pk the nme of the primary key
+    :param schema_fields: If set, the schema field list as defined here:
+        https://cloud.google.com/bigquery/docs/reference/v2/jobs#configuration.load
+        Should not be set when source_format is 'DATASTORE_BACKUP'.
+        Parameter must be defined if 'schema_object' is null and autodetect is False.
+    :param source_format: File format to export.
+    :param field_delimiter: the delimiter in you csv files
+         :param max_bad_records: The maximum number of bad records that BigQuery can
+        ignore when running the job.
+    :param quote_character: The value that is used to quote data sections in a CSV file.
+    :param ignore_unknown_values: [Optional] Indicates if BigQuery should allow
+        extra values that are not represented in the table schema.
+        If true, the extra values are ignored. If false, records with extra columns
+        are treated as bad records, and if there are too many bad records, an
+        invalid error is returned in the job result.
+    :param allow_quoted_newlines: Whether to allow quoted newlines (true) or not (false).
+    :param allow_jagged_rows: Accept rows that are missing trailing optional columns.
+        The missing values are treated as nulls. If false, records with missing trailing
+        columns are treated as bad records, and if there are too many bad records, an
+        invalid error is returned in the job result. Only applicable to CSV, ignored
+        for other formats.
+    :param encoding: The character encoding of the data.
+    :param pg_conn_id: the conn_id of the postgres db you to be loaded
+    :param google_cloud_storage_conn_id: (Optional) The connection ID used to connect to Google Cloud
+        and interact with the Google Cloud Storage service.
+    :param delegate_to: The account to impersonate using domain-wide delegation of authority,
+        if any. For this to work, the service account making the request must have
+        domain-wide delegation enabled.
+    :param impersonation_chain: Optional service account to impersonate using short-term
+        credentials, or chained list of accounts required to get the access_token
+        of the last account in the list, which will be impersonated in the request.
+        If set as a string, the account must grant the originating account
+        the Service Account Token Creator IAM role.
+        If set as a sequence, the identities from the list must grant
+        Service Account Token Creator IAM role to the directly preceding identity, with first
+        account from the list granting this role to the originating account (templated).
+    """
 
     template_fields: Sequence[str] = (
         "bucket",
@@ -48,7 +90,7 @@ class GCSToPostgres(BaseOperator):
         bucket,
         source_objects,
         destination_table,
-        pk_col=None,
+        pk=None,
         schema_fields=None,
         source_format="CSV",
         field_delimiter=",",
@@ -73,7 +115,7 @@ class GCSToPostgres(BaseOperator):
         self.destination_table = destination_table
         self.schema_fields = schema_fields
         self.source_format = source_format
-        self.pk_col = pk_col
+        self.pk = pk
         self.field_delimiter = field_delimiter
         self.max_bad_records = max_bad_records
         self.quote_character = quote_character
@@ -103,45 +145,27 @@ class GCSToPostgres(BaseOperator):
         conn = pg_hook.get_conn()
         cursor = conn.cursor()
         existing_pks = []
-        if self.pk_col is not None:
-            cursor.execute(f"SELECT {self.pk_col} FROM {self.destination_table};")
+        if self.pk is not None:
+            cursor.execute(f"SELECT {self.pk} FROM {self.destination_table};")
             pks = cursor.fetchall()
             self.log.info("these will not get loaded")
             self.log.info(pks)
-            for pk in pks:
-                self.log.info("pk" + str(pk))
-                existing_pks.append(pk[0])
-                self.log.info("existing_pks" + str(existing_pks))
-
         for source_object in self.source_objects:
-            self.log.info("1")
             source_file = gcs_hook.download(self.bucket, source_object)
-            self.log.info("2")
-            self.log.info(source_file)
             source_file = json.loads(source_file.decode(self.encoding))
-            self.log.info(source_file)
-            self.log.info("3")
-            self.log.info(source_file)
-            self.log.info("4")
-            self.log.info(f"/tmp/{source_object}")
-            x = Path(f"/tmp/{source_object}").mkdir(parents=True, exist_ok=True)
+            temp_path = Path(f"/tmp/{source_object}").mkdir(parents=True, exist_ok=True)
             os.rmdir(f"/tmp/{source_object}")
-            self.log.info(x)
 
             with open(f"/tmp/{source_object}", "w+") as dest_file:
-                self.log.info("8")
                 fields = self.schema_fields
                 writer = csv.DictWriter(dest_file, fieldnames=fields)
                 writer.writeheader()
-                self.log.info("here some dags")
-                self.log.info(source_file)
                 for object in source_file:
-
                     row = {}
                     for field in self.schema_fields:
                         row[field] = object[field]
-                    if self.pk_col is not None:
-                        if row[self.pk_col] not in existing_pks:
+                    if self.pk is not None:
+                        if row[self.pk] not in existing_pks:
                             writer.writerow(row)
                     else:
                         writer.writerow(row)

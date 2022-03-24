@@ -15,7 +15,7 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-"""This module contains operator for uploading local file(s) to GCS."""
+"""This module contains operator for loading Airflow dag,dagrun, and task instance information to GCS."""
 import os
 import warnings
 from glob import glob
@@ -32,10 +32,37 @@ if TYPE_CHECKING:
 
 
 class AirflowToGCSOperator(BaseOperator):
-    """Add docstring to Operator"""
+    """
+    Upload information about airflow dags, dagruns, and task instances to a gcs bucket
+
+    :param dst: Destination path within the specified bucket on GCS (e.g. /path/to/file.ext).
+        If multiple files are being uploaded, specify object prefix with trailing backslash
+        (e.g. /path/to/directory/) (templated)
+    :param bucket: The bucket to upload to. (templated)
+    :param airflow_user: The airflow you will connect with
+    :param airflow_pass: password for the user
+    :param airflow_host: the hostname or ip of you airflow deployment
+    :param airflow_port: the port of you airflow deployment
+    :param gcp_conn_id: (Optional) The connection ID used to connect to Google Cloud.
+    :param google_cloud_storage_conn_id: (Deprecated) The connection ID used to connect to Google Cloud.
+        This parameter has been deprecated. You should pass the gcp_conn_id parameter instead.
+    :param mime_type: The mime-type string
+    :param delegate_to: The account to impersonate, if any
+    :param gzip: Allows for file to be compressed and uploaded as gzip
+    :param impersonation_chain: Optional service account to impersonate using short-term
+        credentials, or chained list of accounts required to get the access_token
+        of the last account in the list, which will be impersonated in the request.
+        If set as a string, the account must grant the originating account
+        the Service Account Token Creator IAM role.
+        If set as a sequence, the identities from the list must grant
+        Service Account Token Creator IAM role to the directly preceding identity, with first
+        account from the list granting this role to the originating account (templated).
+    :param airflow_object: either dags, dagRuns, or taskInstances. The airlfow object being reported on
+    :param last_upload_date: load everything after this date
+    :param batch_size: number of entries in each individual file
+    """
 
     template_fields: Sequence[str] = (
-        # 'src',
         "dst",
         "bucket",
         "impersonation_chain",
@@ -47,7 +74,6 @@ class AirflowToGCSOperator(BaseOperator):
         *,
         dst,
         bucket,
-        # TODO updatee to http connection
         airflow_user="admin",
         airflow_pass="admin",
         airflow_host="webserver",
@@ -100,8 +126,6 @@ class AirflowToGCSOperator(BaseOperator):
             "Content-Type": "application/json",
             "Accept": "*/*",
         }
-        self.log.info(f"upload date: {self.last_upload_date}")
-        info = []
         if self.airflow_object == "dags":
             var_return = requests.get(
                 f"http://{self.airflow_host}:{self.airflow_port}/api/v1/dags",
@@ -126,8 +150,6 @@ class AirflowToGCSOperator(BaseOperator):
                     "root_dag_id": dag_dict["root_dag_id"],
                     "schedule_interval": dag_dict["schedule_interval"],
                 }
-                info.append(row)
-            self.log.info(info)
             hook.upload(
                 bucket_name=self.bucket,
                 data=json.dumps(info),
@@ -137,10 +159,6 @@ class AirflowToGCSOperator(BaseOperator):
             )
 
         elif self.airflow_object == "taskInstances":
-            # page_limit and offset don't work for task instance so you have to load it all at one
-            # https://github.com/apache/airflow/issues/20725
-            # alternitivly you could use the get rest call, but that loads 100 task instances at a time and would
-            # take a long time to load
             if self.last_upload_date == "None":
                 data = {"page_limit": self.batch_size, "page_offset": 0}
             else:

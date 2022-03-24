@@ -1,4 +1,4 @@
-from airflow import DAG
+# from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
 from airflow.providers.postgres.operators.postgres import PostgresOperator, PostgresHook
 from airflow.utils.task_group import TaskGroup
@@ -15,34 +15,37 @@ from airflow.decorators import dag, task
     max_active_runs=3,
     schedule_interval=None,
     catchup=False,
+    template_searchpath=f"include/sql/",
 )
 def reporting_dag():
+    pg_hook = PostgresHook(postgres_conn_id="my_postgres_conn_id")
+
     @task
-    def get_existing_dag_info(ti, **kwargs):
+    def get_existing_dag_info():
         conn = pg_hook.get_conn()
         cursor = conn.cursor()
         cursor.execute("SELECT dag_id FROM rpt.dag")
         dags = cursor.fetchall()
-        ti.xcom_push(key="DAG_IDS", value=json.dumps(dags))
+        return json.dumps(dags)
 
     @task
-    def set_max_dag_run_start(ti, **kwargs):
+    def set_max_dag_run_start():
         conn = pg_hook.get_conn()
         cursor = conn.cursor()
         cursor.execute("SELECT Max(start_date) FROM rpt.dag_run;")
         max_dag_start = cursor.fetchone()
-        ti.xcom_push(key="MAX_DAG_START", value=str(max_dag_start[0]))
+        return str(max_dag_start[0])
 
     @task
-    def set_max_task_instance(ti, **kwargs):
+    def set_max_task_instance():
         conn = pg_hook.get_conn()
         cursor = conn.cursor()
         cursor.execute("SELECT Max(start_date) FROM rpt.task_instance;")
         max_task_start = cursor.fetchone()
-        ti.xcom_push(key="MAX_TASK_START", value=str(max_task_start[0]))
+        return max_task_start[0]
 
     ddl = PostgresOperator(
-        task_id="ddl", sql="sql/rpt.sql", postgres_conn_id=PG_CONN_ID
+        task_id="ddl", sql="rpt.sql", postgres_conn_id="my_postgres_conn_id"
     )
     with TaskGroup(group_id="dags") as dags:
         get_existing_dags = get_existing_dag_info()
@@ -60,7 +63,7 @@ def reporting_dag():
             source_format="JSON",
             source_objects="airflow/dags/{{ ts_nodash }}/dags.json",
             google_cloud_storage_conn_id="google_cloud_storage",
-            pg_conn_id=PG_CONN_ID,
+            pg_conn_id="my_postgres_conn_id",
             pk_col="dag_id",
             schema_fields=[
                 "dag_id",
@@ -84,7 +87,7 @@ def reporting_dag():
             batch_size=10000,
             airflow_object="dagRuns",
             gcp_conn_id="google_cloud_storage",
-            last_upload_date="{{ti.xcom_pull(task_ids='dag_runs.set_max_dag_run_start', key='MAX_DAG_START')}}",
+            last_upload_date=set_max_dag_run_start,
             dst="airflow/dag_runs/{{ ts_nodash }}/",
         )
         list_dag_run_objects = GCSListObjectsOperator(
@@ -98,9 +101,9 @@ def reporting_dag():
             bucket="customer-success-reporting",
             destination_table="rpt.dag_run",
             source_format="JSON",
-            source_objects=t6.output,
+            source_objects=list_dag_run_objects.output,
             google_cloud_storage_conn_id="google_cloud_storage",
-            pg_conn_id=PG_CONN_ID,
+            pg_conn_id="my_postgres_conn_id",
             schema_fields=[
                 "dag_id",
                 "dag_run_id",
@@ -126,7 +129,7 @@ def reporting_dag():
             bucket="customer-success-reporting",
             airflow_object="taskInstances",
             gcp_conn_id="google_cloud_storage",
-            last_upload_date="{{ti.xcom_pull(task_ids='task_instances.set_max_task_instance', key='MAX_TASK_START')}}",
+            last_upload_date=set_max_task_instance,
             dst="airflow/task_instance/{{ ts_nodash }}/",
         )
         list_task_instance_objects = GCSListObjectsOperator(
@@ -140,9 +143,9 @@ def reporting_dag():
             bucket="customer-success-reporting",
             destination_table="rpt.task_instance",
             source_format="JSON",
-            source_objects=t10.output,
+            source_objects=list_task_instance_objects.output,
             google_cloud_storage_conn_id="google_cloud_storage",
-            pg_conn_id=PG_CONN_ID,
+            pg_conn_id="my_postgres_conn_id",
             schema_fields=[
                 "dag_id",
                 "task_id",
@@ -175,3 +178,6 @@ def reporting_dag():
     ddl >> dags
     ddl >> dag_runs
     ddl >> task_instances
+
+
+reporting_dag = reporting_dag()
