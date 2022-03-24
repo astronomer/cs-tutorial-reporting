@@ -7,58 +7,53 @@ from datetime import datetime, timedelta
 import json
 from operators.airflow_to_gcs import AirflowToGCSOperator
 from operators.gcs_to_postgres import GCSToPostgres
-
-headers = {
-    "Content-Type": "application/json",
-    "Accept": "*/*",
-}
+from airflow.decorators import dag, task
 
 
-
-def get_existing_dag_info(ti, **kwargs):
-    conn = pg_hook.get_conn()
-    cursor = conn.cursor()
-    cursor.execute("SELECT dag_id FROM rpt.dag")
-    dags = cursor.fetchall()
-    ti.xcom_push(key="DAG_IDS", value=json.dumps(dags))
-
-
-def set_max_dag_run_start(ti, **kwargs):
-    conn = pg_hook.get_conn()
-    cursor = conn.cursor()
-    cursor.execute("SELECT Max(start_date) FROM rpt.dag_run;")
-    max_dag_start = cursor.fetchone()
-    ti.xcom_push(key="MAX_DAG_START", value=str(max_dag_start[0]))
-
-
-def set_max_task_instance(ti, **kwargs):
-    conn = pg_hook.get_conn()
-    cursor = conn.cursor()
-    cursor.execute("SELECT Max(start_date) FROM rpt.task_instance;")
-    max_task_start = cursor.fetchone()
-    ti.xcom_push(key="MAX_TASK_START", value=str(max_task_start[0]))
-
-
-with DAG(
-    "reporting_dag",
+@dag(
     start_date=datetime(2019, 1, 1),
     max_active_runs=3,
     schedule_interval=None,
     catchup=False,
-) as dag:
-    t0 = PostgresOperator(task_id="ddl", sql="sql/rpt.sql", postgres_conn_id=PG_CONN_ID)
-    with TaskGroup(group_id="dags") as tg1:
-        t1 = PythonOperator(
-            task_id="get_existing_dags", python_callable=get_existing_dag_info
-        )
-        t2 = AirflowToGCSOperator(
+)
+def reporting_dag():
+    @task
+    def get_existing_dag_info(ti, **kwargs):
+        conn = pg_hook.get_conn()
+        cursor = conn.cursor()
+        cursor.execute("SELECT dag_id FROM rpt.dag")
+        dags = cursor.fetchall()
+        ti.xcom_push(key="DAG_IDS", value=json.dumps(dags))
+
+    @task
+    def set_max_dag_run_start(ti, **kwargs):
+        conn = pg_hook.get_conn()
+        cursor = conn.cursor()
+        cursor.execute("SELECT Max(start_date) FROM rpt.dag_run;")
+        max_dag_start = cursor.fetchone()
+        ti.xcom_push(key="MAX_DAG_START", value=str(max_dag_start[0]))
+
+    @task
+    def set_max_task_instance(ti, **kwargs):
+        conn = pg_hook.get_conn()
+        cursor = conn.cursor()
+        cursor.execute("SELECT Max(start_date) FROM rpt.task_instance;")
+        max_task_start = cursor.fetchone()
+        ti.xcom_push(key="MAX_TASK_START", value=str(max_task_start[0]))
+
+    ddl = PostgresOperator(
+        task_id="ddl", sql="sql/rpt.sql", postgres_conn_id=PG_CONN_ID
+    )
+    with TaskGroup(group_id="dags") as dags:
+        get_existing_dags = get_existing_dag_info()
+        dags_to_gcs = AirflowToGCSOperator(
             task_id="dags_to_gcs",
             bucket="customer-success-reporting",
             airflow_object="dags",
             gcp_conn_id="google_cloud_storage",
             dst="airflow/dags/{{ ts_nodash }}/",
         )
-        t3 = GCSToPostgres(
+        dag_gcs_to_postgres = GCSToPostgres(
             task_id="dag_gcs_to_postgres",
             bucket="customer-success-reporting",
             destination_table="rpt.dag",
@@ -80,12 +75,10 @@ with DAG(
                 "schedule_interval",
             ],
         )
-        t1 >> t2 >> t3
-    with TaskGroup(group_id="dag_runs") as tg2:
-        t4 = PythonOperator(
-            task_id="set_max_dag_run_start", python_callable=set_max_dag_run_start
-        )
-        t5 = AirflowToGCSOperator(
+        get_existing_dags >> dags_to_gcs >> dag_gcs_to_postgres
+    with TaskGroup(group_id="dag_runs") as dag_runs:
+        set_max_dag_run_start = set_max_dag_run_start()
+        dag_runs_to_gcs = AirflowToGCSOperator(
             task_id="dag_runs_to_gcs",
             bucket="customer-success-reporting",
             batch_size=10000,
@@ -94,13 +87,13 @@ with DAG(
             last_upload_date="{{ti.xcom_pull(task_ids='dag_runs.set_max_dag_run_start', key='MAX_DAG_START')}}",
             dst="airflow/dag_runs/{{ ts_nodash }}/",
         )
-        t6 = GCSListObjectsOperator(
+        list_dag_run_objects = GCSListObjectsOperator(
             task_id="list_dag_run_objects",
             bucket="customer-success-reporting",
             gcp_conn_id="google_cloud_storage",
             prefix="airflow/dag_runs/{{ ts_nodash }}/",
         )
-        t7 = GCSToPostgres(
+        dag_run_gcs_to_postgres = GCSToPostgres(
             task_id="dag_run_gcs_to_postgres",
             bucket="customer-success-reporting",
             destination_table="rpt.dag_run",
@@ -119,13 +112,16 @@ with DAG(
                 "state",
             ],
         )
-        t4 >> t5 >> t6 >> t7
-    with TaskGroup(group_id="task_instances") as tg3:
-
-        t8 = PythonOperator(
-            task_id="set_max_task_instance", python_callable=set_max_task_instance
+        (
+            set_max_dag_run_start
+            >> dag_runs_to_gcs
+            >> list_dag_run_objects
+            >> dag_run_gcs_to_postgres
         )
-        t9 = AirflowToGCSOperator(
+    with TaskGroup(group_id="task_instances") as task_instances:
+
+        set_max_task_instance = set_max_task_instance()
+        task_instance_to_gcs = AirflowToGCSOperator(
             task_id="task_instance_to_gcs",
             bucket="customer-success-reporting",
             airflow_object="taskInstances",
@@ -133,13 +129,13 @@ with DAG(
             last_upload_date="{{ti.xcom_pull(task_ids='task_instances.set_max_task_instance', key='MAX_TASK_START')}}",
             dst="airflow/task_instance/{{ ts_nodash }}/",
         )
-        t10 = GCSListObjectsOperator(
+        list_task_instance_objects = GCSListObjectsOperator(
             task_id="list_task_instance_objects",
             bucket="customer-success-reporting",
             gcp_conn_id="google_cloud_storage",
             prefix="airflow/task_instance/{{ ts_nodash }}/",
         )
-        t11 = GCSToPostgres(
+        task_instance_gcs_to_postgres = GCSToPostgres(
             task_id="task_instance_gcs_to_postgres",
             bucket="customer-success-reporting",
             destination_table="rpt.task_instance",
@@ -169,8 +165,13 @@ with DAG(
                 "executor_config",
             ],
         )
-        t8 >> t9 >> t10 >> t11
+        (
+            set_max_task_instance
+            >> task_instance_to_gcs
+            >> list_task_instance_objects
+            >> task_instance_gcs_to_postgres
+        )
 
-    t0 >> tg1
-    t0 >> tg2
-    t0 >> tg3
+    ddl >> dags
+    ddl >> dag_runs
+    ddl >> task_instances
