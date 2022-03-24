@@ -32,14 +32,15 @@ if TYPE_CHECKING:
 
 class GCSToPostgres(BaseOperator):
     """Add operator docstring"""
+
     template_fields: Sequence[str] = (
-        'bucket',
-        'source_objects',
-        'schema_object',
-        'impersonation_chain',
+        "bucket",
+        "source_objects",
+        "schema_object",
+        "impersonation_chain",
     )
-    template_ext: Sequence[str] = ('.sql',)
-    ui_color = '#f0eee4'
+    template_ext: Sequence[str] = (".sql",)
+    ui_color = "#f0eee4"
 
     def __init__(
         self,
@@ -49,15 +50,15 @@ class GCSToPostgres(BaseOperator):
         destination_table,
         pk_col=None,
         schema_fields=None,
-        source_format='CSV',
-        field_delimiter=',',
+        source_format="CSV",
+        field_delimiter=",",
         max_bad_records=0,
         quote_character=None,
         allow_quoted_newlines=False,
         allow_jagged_rows=False,
         encoding="UTF-8",
-        pg_conn_id='pg_default',
-        google_cloud_storage_conn_id='google_cloud_default',
+        pg_conn_id="pg_default",
+        google_cloud_storage_conn_id="google_cloud_default",
         delegate_to=None,
         impersonation_chain: Optional[Union[str, Sequence[str]]] = None,
         **kwargs,
@@ -86,10 +87,8 @@ class GCSToPostgres(BaseOperator):
 
         self.impersonation_chain = impersonation_chain
 
-    def execute(self, context: 'Context'):
-        pg_hook = PostgresHook(
-            postgres_conn_id=self.pg_conn_id
-        )
+    def execute(self, context: "Context"):
+        pg_hook = PostgresHook(postgres_conn_id=self.pg_conn_id)
         gcs_hook = GCSHook(
             gcp_conn_id=self.google_cloud_storage_conn_id,
             delegate_to=self.delegate_to,
@@ -97,45 +96,44 @@ class GCSToPostgres(BaseOperator):
         )
 
         self.source_objects = (
-            self.source_objects if isinstance(self.source_objects, list) else [
-                                              self.source_objects]
+            self.source_objects
+            if isinstance(self.source_objects, list)
+            else [self.source_objects]
         )
         conn = pg_hook.get_conn()
         cursor = conn.cursor()
         existing_pks = []
         if self.pk_col is not None:
-            cursor.execute(
-                f'SELECT {self.pk_col} FROM {self.destination_table};')
+            cursor.execute(f"SELECT {self.pk_col} FROM {self.destination_table};")
             pks = cursor.fetchall()
-            self.log.info('these will not get loaded')
+            self.log.info("these will not get loaded")
             self.log.info(pks)
             for pk in pks:
-                self.log.info('pk' + str(pk))
+                self.log.info("pk" + str(pk))
                 existing_pks.append(pk[0])
-                self.log.info('existing_pks'+str(existing_pks))
+                self.log.info("existing_pks" + str(existing_pks))
 
         for source_object in self.source_objects:
-            self.log.info('1')
+            self.log.info("1")
             source_file = gcs_hook.download(self.bucket, source_object)
-            self.log.info('2')
+            self.log.info("2")
             self.log.info(source_file)
             source_file = json.loads(source_file.decode(self.encoding))
             self.log.info(source_file)
-            self.log.info('3')
+            self.log.info("3")
             self.log.info(source_file)
-            self.log.info('4')
-            self.log.info(f'/tmp/{source_object}')
-            x = Path(
-                f'/tmp/{source_object}').mkdir(parents=True, exist_ok=True)
-            os.rmdir(f'/tmp/{source_object}')
+            self.log.info("4")
+            self.log.info(f"/tmp/{source_object}")
+            x = Path(f"/tmp/{source_object}").mkdir(parents=True, exist_ok=True)
+            os.rmdir(f"/tmp/{source_object}")
             self.log.info(x)
 
-            with open(f'/tmp/{source_object}', 'w+') as dest_file:
-                self.log.info('8')
+            with open(f"/tmp/{source_object}", "w+") as dest_file:
+                self.log.info("8")
                 fields = self.schema_fields
                 writer = csv.DictWriter(dest_file, fieldnames=fields)
                 writer.writeheader()
-                self.log.info('here some dags')
+                self.log.info("here some dags")
                 self.log.info(source_file)
                 for object in source_file:
 
@@ -147,6 +145,8 @@ class GCSToPostgres(BaseOperator):
                             writer.writerow(row)
                     else:
                         writer.writerow(row)
-            query = f"COPY {self.destination_table} FROM STDIN WITH CSV HEADER NULL AS '' "
-            pg_hook.copy_expert(query, f'/tmp/{source_object}')
-            os.remove(f'/tmp/{source_object}')
+            query = (
+                f"COPY {self.destination_table} FROM STDIN WITH CSV HEADER NULL AS '' "
+            )
+            pg_hook.copy_expert(query, f"/tmp/{source_object}")
+            os.remove(f"/tmp/{source_object}")
