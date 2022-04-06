@@ -31,7 +31,13 @@ if TYPE_CHECKING:
 
 
 class GCSToPostgres(BaseOperator):
-    """Add operator docstring
+    """
+
+    Loads files from Google Cloud Storage into Postgres
+    You should either directly pass the schema fields in. The object in
+    Google Cloud Storage must be a JSON file with the schema fields in it.
+
+
 
     :param bucket: The bucket to load from. (templated)
     :param source_objects: String or List of Google Cloud Storage URIs to load from. (templated)

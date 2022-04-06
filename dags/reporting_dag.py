@@ -9,16 +9,16 @@ from operators.airflow_to_gcs import AirflowToGCSOperator
 from operators.gcs_to_postgres import GCSToPostgres
 from airflow.decorators import dag, task
 
-
+postgres_conn_id='my_postgres_conn_id'
 @dag(
     start_date=datetime(2019, 1, 1),
     max_active_runs=3,
     schedule_interval=None,
     catchup=False,
-    template_searchpath=f"include/sql/",
+    template_searchpath="include/sql/",
 )
 def reporting_dag():
-    pg_hook = PostgresHook(postgres_conn_id="my_postgres_conn_id")
+    pg_hook = PostgresHook(postgres_conn_id=postgres_conn_id)
 
     @task
     def get_existing_dag_info():
@@ -45,7 +45,7 @@ def reporting_dag():
         return max_task_start[0]
 
     ddl = PostgresOperator(
-        task_id="ddl", sql="rpt.sql", postgres_conn_id="my_postgres_conn_id"
+        task_id="ddl", sql="rpt.sql", postgres_conn_id=postgres_conn_id
     )
     with TaskGroup(group_id="dags") as dags:
         get_existing_dags = get_existing_dag_info()
@@ -63,7 +63,7 @@ def reporting_dag():
             source_format="JSON",
             source_objects="airflow/dags/{{ ts_nodash }}/dags.json",
             google_cloud_storage_conn_id="google_cloud_storage",
-            pg_conn_id="my_postgres_conn_id",
+            pg_conn_id=postgres_conn_id,
             pk_col="dag_id",
             schema_fields=[
                 "dag_id",
@@ -103,7 +103,7 @@ def reporting_dag():
             source_format="JSON",
             source_objects=list_dag_run_objects.output,
             google_cloud_storage_conn_id="google_cloud_storage",
-            pg_conn_id="my_postgres_conn_id",
+            pg_conn_id=postgres_conn_id,
             schema_fields=[
                 "dag_id",
                 "dag_run_id",
@@ -145,7 +145,7 @@ def reporting_dag():
             source_format="JSON",
             source_objects=list_task_instance_objects.output,
             google_cloud_storage_conn_id="google_cloud_storage",
-            pg_conn_id="my_postgres_conn_id",
+            pg_conn_id=postgres_conn_id,
             schema_fields=[
                 "dag_id",
                 "task_id",
